@@ -14,7 +14,7 @@
 
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-  <style id="expona-theme-styles">
+  <style>
     /* Base Root Variables (Neon Cyberpunk Theme) */
     :root {
       --bg-color: #030712;
@@ -795,13 +795,6 @@
         if (window.setScrollOffset3D) window.setScrollOffset3D(currentY);
       }
     })();
-
-    // Register Service Worker
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(console.error);
-      });
-    }
   </script>
 </body>
 </html>
