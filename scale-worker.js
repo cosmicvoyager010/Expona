@@ -1,15 +1,13 @@
+// Background Web Worker for logarithmic coordinate computations
 self.addEventListener('message', (e) => {
-  const { type, payload } = e.data;
-
-  if (type === 'CALCULATE_SCALE') {
-    const { scrollY, totalHeight, minLog, maxLog } = payload;
-    const progress = Math.max(0, Math.min(1, Math.abs(scrollY) / totalHeight));
-    const currentExponent = minLog + progress * (maxLog - minLog);
-    const valueInMeters = Math.pow(10, currentExponent);
-
-    self.postMessage({
-      type: 'SCALE_RESULT',
-      payload: { progress, currentExponent: currentExponent.toFixed(2), valueInMeters }
-    });
-  }
+  const { scrollY, stageHeight } = e.data;
+  
+  // Perform non-blocking exponential scale calculations
+  const normalizedProgress = Math.max(0, Math.min(1, Math.abs(scrollY) / stageHeight));
+  const logarithmicScaleExponent = -18 + (normalizedProgress * 39); // Ranges from 10^-18m to 10^+21m
+  
+  self.postMessage({
+    progress: normalizedProgress,
+    exponent: Math.round(logarithmicScaleExponent)
+  });
 });
