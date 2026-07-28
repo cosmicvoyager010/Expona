@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Continuous Journey - Flight Edition (v33)</title>
+    <title>Continuous Journey - Comparison Edition (v34)</title>
     <style>
         :root {
             --bg-color: #04060f;
@@ -131,6 +131,7 @@
             border-radius: 8px;
             font-family: monospace;
             box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            z-index: 5;
         }
 
         .hud-row {
@@ -169,6 +170,7 @@
             max-width: 440px;
             width: 90%;
             text-align: center;
+            z-index: 5;
         }
 
         .logbook-popup.visible {
@@ -277,7 +279,7 @@
     <header>
         <div class="brand">
             <h1>Continuous Journey</h1>
-            <span class="version-badge">v33 Flight Edition</span>
+            <span class="version-badge">v34 Comparison</span>
         </div>
         <div class="global-controls">
             <button id="changelog-btn">Changelog</button>
@@ -289,9 +291,9 @@
         <main class="scale-viewport">
             <!-- Flight Cockpit HUD -->
             <div class="hud-overlay">
-                <div class="hud-row"><span class="hud-label">FLIGHT STATUS:</span><span id="hud-status" class="hud-value">CRUISE READY</span></div>
+                <div class="hud-row"><span class="hud-label">FLIGHT MODE:</span><span id="hud-status" class="hud-value">JOURNEY ACTIVE</span></div>
                 <div class="hud-row"><span class="hud-label">SCALE POSITION:</span><span id="hud-scale" class="hud-value">10^0 m</span></div>
-                <div class="hud-row"><span class="hud-label">VELOCITY (Δlog/s):</span><span id="hud-velocity" class="hud-value">0.00</span></div>
+                <div class="hud-row"><span class="hud-label">VIEW MODE:</span><span id="hud-mode" class="hud-value">LOG SCALE</span></div>
             </div>
 
             <canvas id="journey-canvas"></canvas>
@@ -304,10 +306,10 @@
         </main>
 
         <aside>
-            <h2>Flight Controls</h2>
+            <h2>Flight Navigation</h2>
             <div class="widget-slot" id="flight-console-slot"></div>
+            <div class="widget-slot" id="compare-widget-slot"></div>
             <div class="widget-slot" id="telemetry-slot"></div>
-            <div class="widget-slot" id="destinations-slot"></div>
         </aside>
     </div>
 
@@ -319,8 +321,8 @@
                 <button id="close-modal-btn" style="padding: 2px 8px; font-size: 0.75rem;">✕</button>
             </div>
             <div class="modal-body">
-                <p><strong style="color: var(--text-primary);">v33:</strong> Added starfield warp particle engine, Cruise Autopilot flight mode, cockpit HUD telemetry, and interactive logbook transmissions.</p>
-                <p><strong style="color: var(--text-primary);">v32:</strong> Introduced Speed-of-Light Travel Calculator and photon pulse simulation.</p>
+                <p><strong style="color: var(--text-primary);">v34:</strong> Added Cross-Scale Comparison Mode for side-by-side proportional rendering of disparate cosmic objects.</p>
+                <p><strong style="color: var(--text-primary);">v33:</strong> Added starfield warp particle engine, Cruise Autopilot, and interactive logbook transmissions.</p>
             </div>
         </div>
     </div>
@@ -400,37 +402,30 @@
 
         // 2. Viewport Controller
         class ViewportController {
-            constructor(engine, canvas) {
+            constructor(engine, canvas, renderer) {
                 this.engine = engine;
                 this.canvas = canvas;
+                this.renderer = renderer;
                 this.isDragging = false;
                 this.startX = 0;
-                this.lastX = 0;
-                this.lastTime = Date.now();
-                this.currentVelocity = 0;
                 this.initListeners();
             }
 
             initListeners() {
                 this.canvas.addEventListener('mousedown', (e) => {
+                    if (this.renderer.isCompareMode) return;
                     this.isDragging = true;
                     this.startX = e.clientX;
-                    this.lastX = e.clientX;
-                    this.lastTime = Date.now();
                     this.engine.isAutopilot = false;
                 });
 
                 window.addEventListener('mousemove', (e) => {
-                    if (!this.isDragging) return;
-                    const deltaX = e.clientX - this.lastX;
-                    const now = Date.now();
-                    const dt = Math.max(1, now - this.lastTime);
-                    this.lastX = e.clientX;
-                    this.lastTime = now;
+                    if (!this.isDragging || this.renderer.isCompareMode) return;
+                    const deltaX = e.clientX - this.startX;
+                    this.startX = e.clientX;
 
                     const span = Math.log10(this.engine.maxVal) - Math.log10(this.engine.minVal);
                     const shiftFactor = -deltaX / this.engine.viewportWidth * span;
-                    this.currentVelocity = -shiftFactor / (dt / 16);
 
                     const newMinLog = Math.log10(this.engine.minVal) + shiftFactor;
                     const newMaxLog = Math.log10(this.engine.maxVal) + shiftFactor;
@@ -438,12 +433,10 @@
                     this.engine.maxVal = Math.pow(10, newMaxLog);
                 });
 
-                window.addEventListener('mouseup', () => { 
-                    this.isDragging = false; 
-                    this.currentVelocity = 0;
-                });
+                window.addEventListener('mouseup', () => { this.isDragging = false; });
 
                 this.canvas.addEventListener('wheel', (e) => {
+                    if (this.renderer.isCompareMode) return;
                     e.preventDefault();
                     this.engine.isAutopilot = false;
                     const zoomFactor = e.deltaY < 0 ? 0.92 : 1.08;
@@ -453,12 +446,11 @@
                     const span = (currentMaxLog - currentMinLog) * zoomFactor;
                     this.engine.minVal = Math.pow(10, centerLog - (span / 2));
                     this.engine.maxVal = Math.pow(10, centerLog + (span / 2));
-                    this.currentVelocity = Math.log10(zoomFactor);
                 }, { passive: false });
             }
         }
 
-        // 3. Flight Engine Renderer with Starfield Warp & Logbook Triggers
+        // 3. Flight & Comparison Renderer
         class FlightRenderer {
             constructor(canvas, engine) {
                 this.canvas = canvas;
@@ -468,10 +460,13 @@
                 this.stars = [];
                 this.initStars(150);
                 
-                // HUD and Logbook DOM elements
+                this.isCompareMode = false;
+                this.compareObjA = { name: 'Human', size: 1.7, color: '#3b82f6' };
+                this.compareObjB = { name: 'Sun', size: 1.39e9, color: '#fbbf24' };
+
                 this.hudStatus = document.getElementById('hud-status');
                 this.hudScale = document.getElementById('hud-scale');
-                this.hudVelocity = document.getElementById('hud-velocity');
+                this.hudMode = document.getElementById('hud-mode');
                 this.logbookPopup = document.getElementById('logbook-popup');
                 this.logbookTitle = document.getElementById('logbook-title');
                 this.logbookText = document.getElementById('logbook-text');
@@ -485,8 +480,7 @@
                         x: Math.random() * window.innerWidth,
                         y: Math.random() * window.innerHeight,
                         size: Math.random() * 1.5 + 0.5,
-                        brightness: Math.random() * 0.7 + 0.3,
-                        speedFactor: Math.random() * 0.5 + 0.2
+                        brightness: Math.random() * 0.7 + 0.3
                     });
                 }
             }
@@ -494,6 +488,14 @@
             start() {
                 this.isRunning = true;
                 this.render();
+            }
+
+            setCompareMode(active, objA, objB) {
+                this.isCompareMode = active;
+                if (objA) this.compareObjA = objA;
+                if (objB) this.compareObjB = objB;
+                this.hudMode.textContent = active ? 'COMPARE VIEW' : 'LOG SCALE';
+                this.hudStatus.textContent = active ? 'PROPORTIONAL RENDER' : (this.engine.isAutopilot ? 'AUTOPILOT CRUISING' : 'MANUAL PILOT');
             }
 
             triggerLogbook(title, text) {
@@ -516,12 +518,13 @@
                     this.engine.updateViewport(width);
                 }
 
-                this.engine.stepAutopilot();
+                if (!this.isCompareMode) {
+                    this.engine.stepAutopilot();
+                }
 
                 this.ctx.clearRect(0, 0, width, height);
 
-                // Render Starfield Warp Background
-                const centerLog = (Math.log10(this.engine.minVal) + Math.log10(this.engine.maxVal)) / 2;
+                // Starfield Background
                 this.stars.forEach(star => {
                     this.ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness})`;
                     this.ctx.beginPath();
@@ -529,7 +532,16 @@
                     this.ctx.fill();
                 });
 
-                // Render Scale Axis
+                if (this.isCompareMode) {
+                    this.renderComparisonView(width, height);
+                } else {
+                    this.renderLogScaleView(width, height);
+                }
+
+                requestAnimationFrame(this.render);
+            }
+
+            renderLogScaleView(width, height) {
                 const centerY = height / 2;
                 this.ctx.strokeStyle = '#1e293b';
                 this.ctx.lineWidth = 2;
@@ -555,40 +567,88 @@
                     }
                 });
 
-                // Update HUD Telemetry
+                const centerLog = (Math.log10(this.engine.minVal) + Math.log10(this.engine.maxVal)) / 2;
                 const currentExponent = Math.round(centerLog);
                 this.hudStatus.textContent = this.engine.isAutopilot ? 'AUTOPILOT CRUISING' : 'MANUAL PILOT';
                 this.hudScale.textContent = `10^${currentExponent} m`;
-                this.hudVelocity.textContent = (this.engine.isAutopilot ? 0.15 : 0.00).toFixed(2);
 
-                // Trigger Logbook Milestones
                 if (this.lastLoggedExponent !== currentExponent) {
                     this.lastLoggedExponent = currentExponent;
                     if (currentExponent === 0) this.triggerLogbook('Terrestrial Orbit', 'Surface environment calibrated. Standard meter baseline established.');
                     else if (currentExponent === 8) this.triggerLogbook('Lunar Frontier', 'Crossing cislunar space. Earth-Moon communications delay: ~1.3 seconds.');
                     else if (currentExponent === 11) this.triggerLogbook('Interplanetary Realm', 'Entering inner solar system planetary orbits.');
-                    else if (currentExponent === 13) this.triggerLogbook('Heliosphere Edge', 'Approaching the outer boundary of solar wind influence.');
                     else if (currentExponent === 16) this.triggerLogbook('Interstellar Void', 'Leaving the solar neighborhood. Next waypoint: Alpha Centauri.');
-                    else if (currentExponent === 21) this.triggerLogbook('Galactic Scale', 'Traversing interstellar arms of the Milky Way galaxy.');
                     else if (currentExponent === 26) this.triggerLogbook('Observable Universe', 'Reaching the cosmological horizon limits.');
                 }
+            }
 
-                requestAnimationFrame(this.render);
+            renderComparisonView(width, height) {
+                const cx = width / 2;
+                const cy = height / 2;
+
+                // Proportional calculation
+                const maxDim = Math.max(this.compareObjA.size, this.compareObjB.size);
+                const renderArea = 180; // max radius in pixels
+
+                const radiusA = (this.compareObjA.size / maxDim) * renderArea;
+                const radiusB = (this.compareObjB.size / maxDim) * renderArea;
+
+                // Left Object (A)
+                const ax = cx - 180;
+                this.ctx.fillStyle = this.compareObjA.color;
+                this.ctx.beginPath();
+                this.ctx.arc(ax, cy, Math.max(radiusA, 4), 0, Math.PI * 2);
+                this.ctx.fill();
+
+                this.ctx.fillStyle = '#f8fafc';
+                this.ctx.font = '14px system-ui, sans-serif';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(this.compareObjA.name, ax, cy + renderArea + 30);
+                this.ctx.fillStyle = '#94a3b8';
+                this.ctx.font = '12px monospace';
+                this.ctx.fillText(`${this.compareObjA.size.toExponential(2)} m`, ax, cy + renderArea + 48);
+
+                // Right Object (B)
+                const bx = cx + 180;
+                this.ctx.fillStyle = this.compareObjB.color;
+                this.ctx.beginPath();
+                this.ctx.arc(bx, cy, Math.max(radiusB, 4), 0, Math.PI * 2);
+                this.ctx.fill();
+
+                this.ctx.fillStyle = '#f8fafc';
+                this.ctx.font = '14px system-ui, sans-serif';
+                this.ctx.fillText(this.compareObjB.name, bx, cy + renderArea + 30);
+                this.ctx.fillStyle = '#94a3b8';
+                this.ctx.font = '12px monospace';
+                this.ctx.fillText(`${this.compareObjB.size.toExponential(2)} m`, bx, cy + renderArea + 48);
+
+                // Ratio indicator
+                this.ctx.strokeStyle = '#1e293b';
+                this.ctx.lineWidth = 1;
+                this.ctx.setLineDash([4, 4]);
+                this.ctx.beginPath();
+                this.ctx.moveTo(ax, cy - renderArea - 20);
+                this.ctx.lineTo(bx, cy - renderArea - 20);
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+
+                this.ctx.fillStyle = 'var(--accent-color)';
+                this.ctx.font = '12px monospace';
+                this.ctx.fillText(`Ratio: 1 : ${(maxDim / Math.min(this.compareObjA.size, this.compareObjB.size)).toExponential(2)}`, cx, cy - renderArea - 30);
             }
         }
 
-        // 4. Flight Console & Navigation Widgets
+        // 4. Flight Console & Compare Widgets
         class FlightConsole {
-            constructor(containerId, engine) {
+            constructor(containerId, engine, renderer) {
                 this.container = document.getElementById(containerId);
                 this.engine = engine;
+                this.renderer = renderer;
                 this.destinations = [
                     { name: 'Human Scale (1m)', log: 0 },
                     { name: 'Moon Orbit (3.8e8m)', log: 8.58 },
                     { name: 'Solar System (1.5e11m)', log: 11.17 },
-                    { name: 'Oort Cloud (1.5e15m)', log: 15.17 },
                     { name: 'Nearest Star (4.1e16m)', log: 16.61 },
-                    { name: 'Milestone Galaxy (2.4e20m)', log: 20.38 },
                     { name: 'Observable Universe (8.8e26m)', log: 26.94 }
                 ];
                 this.initDOM();
@@ -604,13 +664,48 @@
                     const btn = document.createElement('button');
                     btn.textContent = dest.name;
                     btn.style.cssText = 'background: rgba(30, 41, 59, 0.5); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.04); padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; text-align: left; transition: all 0.2s;';
-                    btn.onmouseover = () => { btn.style.background = 'var(--accent-color)'; btn.style.color = '#04060f'; };
-                    btn.onmouseout = () => { btn.style.background = 'rgba(30, 41, 59, 0.5)'; btn.style.color = 'var(--text-primary)'; };
-                    
                     btn.addEventListener('click', () => {
+                        this.renderer.setCompareMode(false);
                         this.engine.navigateTo(dest.log);
                     });
                     list.appendChild(btn);
+                });
+            }
+        }
+
+        class CompareWidget {
+            constructor(containerId, renderer) {
+                this.container = document.getElementById(containerId);
+                this.renderer = renderer;
+                this.pairs = [
+                    { name: 'Human vs Sun', a: { name: 'Human', size: 1.7, color: '#3b82f6' }, b: { name: 'Sun', size: 1.39e9, color: '#fbbf24' } },
+                    { name: 'Earth vs Jupiter', a: { name: 'Earth', size: 1.27e7, color: '#38bdf8' }, b: { name: 'Jupiter', size: 1.4e8, color: '#f59e0b' } },
+                    { name: 'Sun vs Black Hole', a: { name: 'Sun', size: 1.39e9, color: '#fbbf24' }, b: { name: 'TON 618 (BH)', size: 3.9e14, color: '#a855f7' } }
+                ];
+                this.initDOM();
+            }
+
+            initDOM() {
+                this.container.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <h3 style="font-size: 0.8rem; color: var(--text-primary); font-weight: 600;">Cross-Scale Compare</h3>
+                        <button id="exit-compare-btn" style="padding: 2px 6px; font-size: 0.65rem;">Log Scale</button>
+                    </div>
+                    <div id="compare-list" style="display: flex; flex-direction: column; gap: 4px;"></div>
+                `;
+                const list = document.getElementById('compare-list');
+                this.pairs.forEach(pair => {
+                    const btn = document.createElement('button');
+                    btn.textContent = pair.name;
+                    btn.style.cssText = 'background: rgba(30, 41, 59, 0.5); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.04); padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; text-align: left; transition: all 0.2s;';
+                    btn.addEventListener('click', () => {
+                        this.renderer.setCompareMode(true, pair.a, pair.b);
+                    });
+                    list.appendChild(btn);
+                });
+
+                document.getElementById('exit-compare-btn').addEventListener('click', () => {
+                    this.renderer.setCompareMode(false);
                 });
             }
         }
@@ -619,15 +714,17 @@
         window.addEventListener('DOMContentLoaded', () => {
             const canvas = document.getElementById('journey-canvas');
             const engine = new LogScaleEngine({ minVal: 1, maxVal: 1e26, viewportWidth: canvas.clientWidth });
-            const controller = new ViewportController(engine, canvas);
             const renderer = new FlightRenderer(canvas, engine);
+            const controller = new ViewportController(engine, canvas, renderer);
 
-            const consoleWidget = new FlightConsole('flight-console-slot', engine);
+            const consoleWidget = new FlightConsole('flight-console-slot', engine, renderer);
+            const compareWidget = new CompareWidget('compare-widget-slot', renderer);
 
             renderer.start();
 
             document.getElementById('reset-view-btn').addEventListener('click', () => {
-                engine.navigateTo(13); // Center around solar system
+                renderer.setCompareMode(false);
+                engine.navigateTo(13);
             });
 
             const modal = document.getElementById('changelog-modal');
