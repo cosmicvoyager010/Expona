@@ -1,23 +1,17 @@
 {
-  "name": "Expona — Journey of Exponential Scales",
+  "name": "Expona — Scale Exploration",
   "short_name": "Expona",
-  "description": "Explore the universe across orders of magnitude, from subatomic particles to cosmic scales.",
+  "description": "Interactive journey across exponential scales of the universe.",
   "start_url": "./index.html",
   "display": "standalone",
-  "orientation": "portrait-primary",
   "background_color": "#030712",
   "theme_color": "#030712",
+  "orientation": "portrait",
   "icons": [
     {
-      "src": "https://cosmicvoyager010.github.io/Expona/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "https://cosmicvoyager010.github.io/Expona/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ]
