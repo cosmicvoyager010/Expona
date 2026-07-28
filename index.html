@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Continuous Journey - Fully Integrated Edition</title>
+    <title>Continuous Journey - Polished Edition (v30)</title>
     <style>
         :root {
-            --bg-color: #0b0f19;
-            --panel-bg: #111827;
-            --border-color: #1f2937;
-            --text-primary: #f3f4f6;
-            --text-secondary: #9ca3af;
+            --bg-color: #070913;
+            --panel-bg: #0d1322;
+            --border-color: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
             --accent-color: #3b82f6;
             --accent-hover: #2563eb;
+            --glow-color: rgba(59, 130, 246, 0.25);
         }
 
         * {
@@ -39,6 +40,8 @@
             align-items: center;
             justify-content: space-between;
             padding: 0 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            z-index: 10;
         }
 
         .brand {
@@ -48,15 +51,16 @@
         }
 
         .brand h1 {
-            font-size: 1.1rem;
+            font-size: 1.15rem;
             font-weight: 600;
             letter-spacing: 0.05em;
         }
 
         .version-badge {
-            background-color: rgba(59, 130, 246, 0.15);
+            background-color: var(--glow-color);
             color: var(--accent-color);
-            padding: 2px 8px;
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            padding: 2px 10px;
             border-radius: 12px;
             font-size: 0.75rem;
             font-weight: 500;
@@ -70,16 +74,19 @@
         button {
             background-color: var(--border-color);
             color: var(--text-primary);
-            border: none;
-            padding: 6px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 6px 14px;
             border-radius: 6px;
             cursor: pointer;
             font-size: 0.85rem;
-            transition: background 0.2s;
+            font-weight: 500;
+            transition: all 0.2s ease;
         }
 
         button:hover {
             background-color: var(--accent-color);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 12px var(--glow-color);
         }
 
         .workspace {
@@ -91,7 +98,7 @@
 
         .scale-viewport {
             position: relative;
-            background: radial-gradient(circle at center, #1e293b 0%, #0b0f19 100%);
+            background: radial-gradient(circle at center, #131c31 0%, #070913 100%);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -115,19 +122,81 @@
             gap: 12px;
         }
 
+        aside::-webkit-scrollbar {
+            width: 6px;
+        }
+        aside::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
         aside h2 {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: var(--text-secondary);
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 4px;
+            letter-spacing: 0.08em;
+            margin-bottom: 2px;
         }
 
         .widget-slot {
-            background-color: var(--bg-color);
+            background-color: rgba(13, 19, 34, 0.6);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 12px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+        }
+
+        /* Modal Overlay Styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(3, 5, 10, 0.8);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            width: 480px;
+            max-width: 90vw;
+            padding: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .modal-body {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
         }
     </style>
 </head>
@@ -136,9 +205,10 @@
     <header>
         <div class="brand">
             <h1>Continuous Journey</h1>
-            <span class="version-badge">v29 Integrated</span>
+            <span class="version-badge">v30 Polished</span>
         </div>
         <div class="global-controls">
+            <button id="changelog-btn">Changelog</button>
             <button id="reset-view-btn">Reset View</button>
         </div>
     </header>
@@ -157,6 +227,21 @@
         </aside>
     </div>
 
+    <!-- Changelog Modal -->
+    <div class="modal-overlay" id="changelog-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 style="font-size: 1rem; color: var(--text-primary); font-weight: 600;">System Changelog</h3>
+                <button id="close-modal-btn" style="padding: 2px 8px; font-size: 0.75rem;">✕</button>
+            </div>
+            <div class="modal-body">
+                <p><strong style="color: var(--text-primary);">v30:</strong> Integrated dedicated modal overlay, enhanced CSS glassmorphism styling, refined scrollbars, and smoothed out glowing hover micro-animations.</p>
+                <p><strong style="color: var(--text-primary);">v29:</strong> Unified sidebar modular architecture incorporating Solar System orbits and Saturn ring-shepherd telemetry controls.</p>
+                <p><strong style="color: var(--text-primary);">v28:</strong> Implemented logarithmic coordinate transformations and interactive drag-to-pan / wheel-to-zoom engine mechanics.</p>
+            </div>
+        </div>
+    </div>
+
     <script>
         // 1. Core Log Scale Engine
         class LogScaleEngine {
@@ -164,7 +249,7 @@
                 this.minVal = options.minVal || 1;
                 this.maxVal = options.maxVal || 1e26;
                 this.viewportWidth = options.viewportWidth || window.innerWidth;
-                this.padding = options.padding || 50;
+                this.padding = options.padding || 60;
             }
 
             toPixel(value) {
@@ -307,16 +392,17 @@
                 this.ctx.clearRect(0, 0, width, height);
                 const centerY = height / 2;
 
-                // Draw Axis & Ticks
-                this.ctx.strokeStyle = '#1f2937';
+                // Draw Axis Line
+                this.ctx.strokeStyle = '#1e293b';
                 this.ctx.lineWidth = 2;
                 this.ctx.beginPath();
                 this.ctx.moveTo(0, centerY);
                 this.ctx.lineTo(this.canvas.width, centerY);
                 this.ctx.stroke();
 
+                // Draw Ticks
                 const ticks = this.engine.generateTicks();
-                this.ctx.fillStyle = '#9ca3af';
+                this.ctx.fillStyle = '#94a3b8';
                 this.ctx.font = '12px system-ui, sans-serif';
                 this.ctx.textAlign = 'center';
 
@@ -337,7 +423,7 @@
                 this.detailsSlot.innerHTML = `
                     <h3 style="font-size: 0.8rem; color: var(--text-primary); font-weight: 600; margin-bottom: 4px;">Telemetry Overview</h3>
                     <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                        <span style="width: 8px; height: 8px; border-radius: 50%; background-color: ${activeTier.color};"></span>
+                        <span style="width: 8px; height: 8px; border-radius: 50%; background-color: ${activeTier.color}; box-shadow: 0 0 8px ${activeTier.color};"></span>
                         <span style="font-size: 0.75rem; font-weight: 500; color: ${activeTier.color};">${activeTier.name}</span>
                     </div>
                     <p style="font-size: 0.7rem; color: var(--text-secondary); line-height: 1.3;">${activeTier.description}</p>
@@ -370,7 +456,10 @@
                 this.bookmarks.forEach(bm => {
                     const btn = document.createElement('button');
                     btn.textContent = bm.name;
-                    btn.style.cssText = 'background: var(--border-color); color: var(--text-primary); border: none; padding: 4px 6px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; text-align: center;';
+                    btn.style.cssText = 'background: rgba(30, 41, 59, 0.5); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.04); padding: 4px 6px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; text-align: center; transition: all 0.2s;';
+                    btn.onmouseover = () => { btn.style.background = 'var(--accent-color)'; btn.style.borderColor = 'var(--accent-color)'; };
+                    btn.onmouseout = () => { btn.style.background = 'rgba(30, 41, 59, 0.5)'; btn.style.borderColor = 'rgba(255,255,255,0.04)'; };
+                    
                     btn.addEventListener('click', () => {
                         const logVal = Math.log10(bm.value);
                         const currentSpan = Math.log10(this.engine.maxVal) - Math.log10(this.engine.minVal);
@@ -397,7 +486,7 @@
                         <h3 style="font-size: 0.8rem; color: var(--text-primary); font-weight: 600;">Solar System View</h3>
                         <button id="focus-orbit-btn" style="padding: 2px 6px; font-size: 0.65rem;">Focus</button>
                     </div>
-                    <div style="width: 100%; height: 120px; background: #0b0f19; border-radius: 4px; overflow: hidden; position: relative;">
+                    <div style="width: 100%; height: 120px; background: #070913; border-radius: 4px; overflow: hidden; position: relative;">
                         <canvas id="solar-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
                     </div>
                 `;
@@ -431,7 +520,7 @@
 
                     planets.forEach((p, idx) => {
                         const r = 16 + (idx * 14);
-                        ctx.strokeStyle = '#1f2937';
+                        ctx.strokeStyle = '#1e293b';
                         ctx.lineWidth = 1;
                         ctx.beginPath();
                         ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -474,7 +563,7 @@
                         <h3 style="font-size: 0.8rem; color: var(--text-primary); font-weight: 600;">Saturn Shepherds</h3>
                         <button id="focus-saturn-btn" style="padding: 2px 6px; font-size: 0.65rem;">Focus</button>
                     </div>
-                    <div style="width: 100%; height: 120px; background: #0b0f19; border-radius: 4px; overflow: hidden; position: relative;">
+                    <div style="width: 100%; height: 120px; background: #070913; border-radius: 4px; overflow: hidden; position: relative;">
                         <canvas id="saturn-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
                     </div>
                 `;
@@ -534,7 +623,7 @@
             }
         }
 
-        // Initialization Pipeline
+        // Initialization Pipeline & Modal Controls
         window.addEventListener('DOMContentLoaded', () => {
             const canvas = document.getElementById('journey-canvas');
             const engine = new LogScaleEngine({ minVal: 1, maxVal: 1e26, viewportWidth: canvas.clientWidth });
@@ -551,6 +640,14 @@
             document.getElementById('reset-view-btn').addEventListener('click', () => {
                 engine.minVal = 1;
                 engine.maxVal = 1e26;
+            });
+
+            // Modal Logic
+            const modal = document.getElementById('changelog-modal');
+            document.getElementById('changelog-btn').addEventListener('click', () => modal.classList.add('active'));
+            document.getElementById('close-modal-btn').addEventListener('click', () => modal.classList.remove('active'));
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.classList.remove('active');
             });
         });
     </script>
