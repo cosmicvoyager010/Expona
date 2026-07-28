@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Continuous Journey - Interactive Planetary Edition (v31)</title>
+    <title>Continuous Journey - Light-Speed Explorer Edition (v32)</title>
     <style>
         :root {
             --bg-color: #070913;
@@ -14,6 +14,7 @@
             --accent-color: #3b82f6;
             --accent-hover: #2563eb;
             --glow-color: rgba(59, 130, 246, 0.25);
+            --photon-color: #38bdf8;
         }
 
         * {
@@ -92,7 +93,7 @@
         .workspace {
             flex: 1;
             display: grid;
-            grid-template-columns: 1fr 340px;
+            grid-template-columns: 1fr 360px;
             overflow: hidden;
         }
 
@@ -119,7 +120,7 @@
             flex-direction: column;
             padding: 15px;
             overflow-y: auto;
-            gap: 12px;
+            gap: 10px;
         }
 
         aside::-webkit-scrollbar {
@@ -131,7 +132,7 @@
         }
 
         aside h2 {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.08em;
@@ -142,7 +143,7 @@
             background-color: rgba(13, 19, 34, 0.6);
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            padding: 12px;
+            padding: 10px;
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
         }
 
@@ -218,7 +219,7 @@
     <header>
         <div class="brand">
             <h1>Continuous Journey</h1>
-            <span class="version-badge">v31 Interactive</span>
+            <span class="version-badge">v32 Light-Speed</span>
         </div>
         <div class="global-controls">
             <button id="changelog-btn">Changelog</button>
@@ -242,6 +243,7 @@
                     <button id="mode-saturn">Saturn Rings</button>
                 </div>
             </div>
+            <div class="widget-slot" id="sol-calc-slot"></div>
             <div class="widget-slot" id="bookmark-slot"></div>
             <div class="widget-slot" id="solar-slot"></div>
             <div class="widget-slot" id="saturn-slot"></div>
@@ -256,9 +258,9 @@
                 <button id="close-modal-btn" style="padding: 2px 8px; font-size: 0.75rem;">✕</button>
             </div>
             <div class="modal-body">
-                <p><strong style="color: var(--text-primary);">v31:</strong> Added interactive planetary drill-down system with dedicated detail renderers for Earth-Moon orbital mechanics and Saturn ring systems.</p>
-                <p><strong style="color: var(--text-primary);">v30:</strong> Integrated dedicated modal overlay, enhanced CSS glassmorphism styling, and refined scrollbars.</p>
-                <p><strong style="color: var(--text-primary);">v29:</strong> Unified sidebar modular architecture incorporating Solar System orbits and Saturn telemetry controls.</p>
+                <p><strong style="color: var(--text-primary);">v32:</strong> Introduced Speed-of-Light Travel Calculator widget and animated photon pulse simulation across the log scale.</p>
+                <p><strong style="color: var(--text-primary);">v31:</strong> Added interactive planetary drill-down system with detailed views for Earth-Moon orbital mechanics and Saturn ring systems.</p>
+                <p><strong style="color: var(--text-primary);">v30:</strong> Integrated modal overlay and enhanced CSS glassmorphism styling.</p>
             </div>
         </div>
     </div>
@@ -383,7 +385,7 @@
             }
         }
 
-        // 4. Canvas Renderer & Interactive Planetary Drill-Down
+        // 4. Canvas Renderer & Interactive Planetary Drill-Down with Photon Pulse
         class JourneyRenderer {
             constructor(canvas, engine, classifier) {
                 this.canvas = canvas;
@@ -394,6 +396,9 @@
                 this.currentMode = 'solar'; // 'solar', 'earth', 'saturn'
                 this.detailsSlot = document.getElementById('details-slot');
                 this.animAngle = 0;
+                this.photonActive = false;
+                this.photonProgress = 0;
+                this.photonTargetDist = 3.84e8;
             }
 
             setMode(mode) {
@@ -402,6 +407,13 @@
                     document.getElementById(id).classList.remove('active');
                 });
                 document.getElementById(`mode-${mode}`).classList.add('active');
+            }
+
+            launchPhoton(distance) {
+                this.photonTargetDist = distance;
+                this.photonProgress = 0;
+                this.photonActive = true;
+                this.setMode('solar');
             }
 
             start() {
@@ -461,6 +473,32 @@
                     }
                 });
 
+                // Render Photon Pulse if active
+                if (this.photonActive) {
+                    this.photonProgress += 0.015;
+                    if (this.photonProgress > 1) {
+                        this.photonProgress = 1;
+                        setTimeout(() => { this.photonActive = false; }, 1000);
+                    }
+                    const startVal = Math.max(this.engine.minVal, 1);
+                    const currentVal = startVal + (this.photonTargetDist - startVal) * this.photonProgress;
+                    const px = this.engine.toPixel(currentVal);
+
+                    if (px >= 0 && px <= width) {
+                        this.ctx.fillStyle = '#38bdf8';
+                        this.ctx.shadowColor = '#38bdf8';
+                        this.ctx.shadowBlur = 12;
+                        this.ctx.beginPath();
+                        this.ctx.arc(px, centerY, 6, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        this.ctx.shadowBlur = 0;
+
+                        this.ctx.fillStyle = '#38bdf8';
+                        this.ctx.font = '11px system-ui, sans-serif';
+                        this.ctx.fillText(`Light Pulse: ${(this.photonProgress * 100).toFixed(0)}%`, px, centerY - 16);
+                    }
+                }
+
                 const activeTier = this.classifier.getTierForViewport(this.engine.minVal, this.engine.maxVal);
                 this.detailsSlot.innerHTML = `
                     <h3 style="font-size: 0.8rem; color: var(--text-primary); font-weight: 600; margin-bottom: 4px;">Telemetry Overview</h3>
@@ -476,23 +514,19 @@
                 const cx = width / 2;
                 const cy = height / 2;
 
-                // Orbit path
                 this.ctx.strokeStyle = '#1e293b';
                 this.ctx.lineWidth = 1.5;
                 this.ctx.beginPath();
                 this.ctx.arc(cx, cy, 120, 0, Math.PI * 2);
                 this.ctx.stroke();
 
-                // Earth Body
                 this.ctx.fillStyle = '#3b82f6';
                 this.ctx.beginPath();
                 this.ctx.arc(cx, cy, 32, 0, Math.PI * 2);
                 this.ctx.fill();
 
-                // Moon Position
                 const mx = cx + Math.cos(this.animAngle) * 120;
                 const my = cy + Math.sin(this.animAngle) * 120;
-
                 this.ctx.fillStyle = '#94a3b8';
                 this.ctx.beginPath();
                 this.ctx.arc(mx, my, 10, 0, Math.PI * 2);
@@ -500,7 +534,7 @@
 
                 this.detailsSlot.innerHTML = `
                     <h3 style="font-size: 0.8rem; color: var(--text-primary); font-weight: 600; margin-bottom: 4px;">Earth-Moon System</h3>
-                    <p style="font-size: 0.7rem; color: var(--text-secondary); line-height: 1.3;">Orbital Radius: ~384,400 km. Demonstrating lunar revolution and tidal locking geometry.</p>
+                    <p style="font-size: 0.7rem; color: var(--text-secondary); line-height: 1.3;">Orbital Radius: ~384,400 km. Light travel time from Earth: 1.28 seconds.</p>
                 `;
             }
 
@@ -508,13 +542,11 @@
                 const cx = width / 2;
                 const cy = height / 2;
 
-                // Saturn Body
                 this.ctx.fillStyle = '#f59e0b';
                 this.ctx.beginPath();
                 this.ctx.arc(cx, cy, 40, 0, Math.PI * 2);
                 this.ctx.fill();
 
-                // Ring Bands
                 const rings = [
                     { rMin: 50, rMax: 65, color: 'rgba(156, 163, 175, 0.4)' },
                     { rMin: 70, rMax: 95, color: 'rgba(209, 213, 219, 0.7)' },
@@ -529,7 +561,6 @@
                     this.ctx.stroke();
                 });
 
-                // Shepherd Moon
                 const sx = cx + Math.cos(this.animAngle * 0.8) * 130;
                 const sy = cy + Math.sin(this.animAngle * 0.8) * 130;
                 this.ctx.fillStyle = '#ffffff';
@@ -544,7 +575,62 @@
             }
         }
 
-        // 5. Bookmark Manager
+        // 5. Speed of Light Calculator Widget
+        class SpeedOfLightWidget {
+            constructor(containerId, renderer) {
+                this.container = document.getElementById(containerId);
+                this.renderer = renderer;
+                this.c = 299792458; // m/s
+                this.destinations = [
+                    { name: 'Moon', distance: 3.84e8 },
+                    { name: 'Sun', distance: 1.496e11 },
+                    { name: 'Jupiter', distance: 7.78e11 },
+                    { name: 'Pluto', distance: 5.9e12 },
+                    { name: 'Alpha Centauri', distance: 4.13e16 }
+                ];
+                this.initDOM();
+            }
+
+            initDOM() {
+                this.container.innerHTML = `
+                    <h3 style="font-size: 0.8rem; color: var(--text-primary); font-weight: 600; margin-bottom: 6px;">Speed-of-Light Travel</h3>
+                    <div style="display: flex; gap: 4px; margin-bottom: 6px;">
+                        <select id="sol-select" style="flex: 1; background: #070913; color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px; font-size: 0.7rem;">
+                            ${this.destinations.map(d => `<option value="${d.distance}">${d.name}</option>`).join('')}
+                        </select>
+                        <button id="launch-pulse-btn" style="padding: 4px 8px; font-size: 0.7rem;">Launch Pulse</button>
+                    </div>
+                    <div id="sol-output" style="font-size: 0.7rem; color: var(--text-secondary);">Select a destination to calculate light delay.</div>
+                `;
+
+                const select = document.getElementById('sol-select');
+                const output = document.getElementById('sol-output');
+                const btn = document.getElementById('launch-pulse-btn');
+
+                const updateCalc = () => {
+                    const dist = parseFloat(select.value);
+                    const seconds = dist / this.c;
+                    let timeStr = '';
+                    if (seconds < 60) timeStr = `${seconds.toFixed(2)} seconds`;
+                    else if (seconds < 3600) timeStr = `${(seconds / 60).toFixed(2)} minutes`;
+                    else if (seconds < 86400) timeStr = `${(seconds / 3600).toFixed(2)} hours`;
+                    else if (seconds < 31557600) timeStr = `${(seconds / 86400).toFixed(2)} days`;
+                    else timeStr = `${(seconds / 31557600).toFixed(2)} years`;
+
+                    output.innerHTML = `Time at $c$: <strong style="color: var(--text-primary);">${timeStr}</strong>`;
+                };
+
+                select.addEventListener('change', updateCalc);
+                updateCalc();
+
+                btn.addEventListener('click', () => {
+                    const dist = parseFloat(select.value);
+                    this.renderer.launchPhoton(dist);
+                });
+            }
+        }
+
+        // 6. Bookmark Manager
         class BookmarkManager {
             constructor(containerId, engine, renderer) {
                 this.container = document.getElementById(containerId);
@@ -586,7 +672,7 @@
             }
         }
 
-        // 6. Solar System Widget
+        // 7. Solar System Widget
         class SolarSystemWidget {
             constructor(containerId, engine, renderer) {
                 this.container = document.getElementById(containerId);
@@ -602,7 +688,7 @@
                         <h3 style="font-size: 0.8rem; color: var(--text-primary); font-weight: 600;">Solar System View</h3>
                         <button id="focus-orbit-btn" style="padding: 2px 6px; font-size: 0.65rem;">Focus</button>
                     </div>
-                    <div style="width: 100%; height: 120px; background: #070913; border-radius: 4px; overflow: hidden; position: relative; cursor: pointer;">
+                    <div style="width: 100%; height: 110px; background: #070913; border-radius: 4px; overflow: hidden; position: relative; cursor: pointer;">
                         <canvas id="solar-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
                     </div>
                 `;
@@ -635,7 +721,7 @@
                     ctx.fill();
 
                     planets.forEach((p, idx) => {
-                        const r = 16 + (idx * 14);
+                        const r = 14 + (idx * 12);
                         ctx.strokeStyle = '#1e293b';
                         ctx.lineWidth = 1;
                         ctx.beginPath();
@@ -669,7 +755,7 @@
             }
         }
 
-        // 7. Saturn Ring-Shepherds Widget
+        // 8. Saturn Ring-Shepherds Widget
         class SaturnShepherdsWidget {
             constructor(containerId, engine, renderer) {
                 this.container = document.getElementById(containerId);
@@ -685,7 +771,7 @@
                         <h3 style="font-size: 0.8rem; color: var(--text-primary); font-weight: 600;">Saturn Shepherds</h3>
                         <button id="focus-saturn-btn" style="padding: 2px 6px; font-size: 0.65rem;">Focus</button>
                     </div>
-                    <div style="width: 100%; height: 120px; background: #070913; border-radius: 4px; overflow: hidden; position: relative; cursor: pointer;">
+                    <div style="width: 100%; height: 110px; background: #070913; border-radius: 4px; overflow: hidden; position: relative; cursor: pointer;">
                         <canvas id="saturn-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
                     </div>
                 `;
@@ -756,6 +842,7 @@
             const classifier = new ReachTierClassifier();
             const renderer = new JourneyRenderer(canvas, engine, classifier);
             
+            const solCalcWidget = new SpeedOfLightWidget('sol-calc-slot', renderer);
             const bookmarkMgr = new BookmarkManager('bookmark-slot', engine, renderer);
             const solarWidget = new SolarSystemWidget('solar-slot', engine, renderer);
             const saturnWidget = new SaturnShepherdsWidget('saturn-slot', engine, renderer);
@@ -768,12 +855,10 @@
                 engine.maxVal = 1e26;
             });
 
-            // Mode Selector Buttons
             document.getElementById('mode-solar').addEventListener('click', () => renderer.setMode('solar'));
             document.getElementById('mode-earth').addEventListener('click', () => renderer.setMode('earth'));
             document.getElementById('mode-saturn').addEventListener('click', () => renderer.setMode('saturn'));
 
-            // Modal Logic
             const modal = document.getElementById('changelog-modal');
             document.getElementById('changelog-btn').addEventListener('click', () => modal.classList.add('active'));
             document.getElementById('close-modal-btn').addEventListener('click', () => modal.classList.remove('active'));
