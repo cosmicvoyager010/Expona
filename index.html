@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Continuous Journey - Comparison Edition (v34)</title>
+    <title>Continuous Journey - Planetary Edition (v35)</title>
     <style>
         :root {
             --bg-color: #04060f;
@@ -279,7 +279,7 @@
     <header>
         <div class="brand">
             <h1>Continuous Journey</h1>
-            <span class="version-badge">v34 Comparison</span>
+            <span class="version-badge">v35 Planetary</span>
         </div>
         <div class="global-controls">
             <button id="changelog-btn">Changelog</button>
@@ -321,8 +321,8 @@
                 <button id="close-modal-btn" style="padding: 2px 8px; font-size: 0.75rem;">✕</button>
             </div>
             <div class="modal-body">
-                <p><strong style="color: var(--text-primary);">v34:</strong> Added Cross-Scale Comparison Mode for side-by-side proportional rendering of disparate cosmic objects.</p>
-                <p><strong style="color: var(--text-primary);">v33:</strong> Added starfield warp particle engine, Cruise Autopilot, and interactive logbook transmissions.</p>
+                <p><strong style="color: var(--text-primary);">v35:</strong> Added comprehensive planetary comparison pairs (Earth vs Moon, Earth vs Sun, Earth vs Jupiter).</p>
+                <p><strong style="color: var(--text-primary);">v34:</strong> Added Cross-Scale Comparison Mode for side-by-side proportional rendering.</p>
             </div>
         </div>
     </div>
@@ -461,8 +461,8 @@
                 this.initStars(150);
                 
                 this.isCompareMode = false;
-                this.compareObjA = { name: 'Human', size: 1.7, color: '#3b82f6' };
-                this.compareObjB = { name: 'Sun', size: 1.39e9, color: '#fbbf24' };
+                this.compareObjA = { name: 'Earth', size: 1.27e7, color: '#38bdf8' };
+                this.compareObjB = { name: 'Moon', size: 3.47e6, color: '#94a3b8' };
 
                 this.hudStatus = document.getElementById('hud-status');
                 this.hudScale = document.getElementById('hud-scale');
@@ -586,18 +586,16 @@
                 const cx = width / 2;
                 const cy = height / 2;
 
-                // Proportional calculation
                 const maxDim = Math.max(this.compareObjA.size, this.compareObjB.size);
-                const renderArea = 180; // max radius in pixels
+                const renderArea = 180;
 
                 const radiusA = (this.compareObjA.size / maxDim) * renderArea;
                 const radiusB = (this.compareObjB.size / maxDim) * renderArea;
 
-                // Left Object (A)
                 const ax = cx - 180;
                 this.ctx.fillStyle = this.compareObjA.color;
                 this.ctx.beginPath();
-                this.ctx.arc(ax, cy, Math.max(radiusA, 4), 0, Math.PI * 2);
+                this.ctx.arc(ax, cy, Math.max(radiusA, 6), 0, Math.PI * 2);
                 this.ctx.fill();
 
                 this.ctx.fillStyle = '#f8fafc';
@@ -608,11 +606,10 @@
                 this.ctx.font = '12px monospace';
                 this.ctx.fillText(`${this.compareObjA.size.toExponential(2)} m`, ax, cy + renderArea + 48);
 
-                // Right Object (B)
                 const bx = cx + 180;
                 this.ctx.fillStyle = this.compareObjB.color;
                 this.ctx.beginPath();
-                this.ctx.arc(bx, cy, Math.max(radiusB, 4), 0, Math.PI * 2);
+                this.ctx.arc(bx, cy, Math.max(radiusB, 6), 0, Math.PI * 2);
                 this.ctx.fill();
 
                 this.ctx.fillStyle = '#f8fafc';
@@ -622,7 +619,6 @@
                 this.ctx.font = '12px monospace';
                 this.ctx.fillText(`${this.compareObjB.size.toExponential(2)} m`, bx, cy + renderArea + 48);
 
-                // Ratio indicator
                 this.ctx.strokeStyle = '#1e293b';
                 this.ctx.lineWidth = 1;
                 this.ctx.setLineDash([4, 4]);
@@ -678,9 +674,10 @@
                 this.container = document.getElementById(containerId);
                 this.renderer = renderer;
                 this.pairs = [
-                    { name: 'Human vs Sun', a: { name: 'Human', size: 1.7, color: '#3b82f6' }, b: { name: 'Sun', size: 1.39e9, color: '#fbbf24' } },
+                    { name: 'Earth vs Moon', a: { name: 'Earth', size: 1.27e7, color: '#38bdf8' }, b: { name: 'Moon', size: 3.47e6, color: '#94a3b8' } },
+                    { name: 'Earth vs Sun', a: { name: 'Earth', size: 1.27e7, color: '#38bdf8' }, b: { name: 'Sun', size: 1.39e9, color: '#fbbf24' } },
                     { name: 'Earth vs Jupiter', a: { name: 'Earth', size: 1.27e7, color: '#38bdf8' }, b: { name: 'Jupiter', size: 1.4e8, color: '#f59e0b' } },
-                    { name: 'Sun vs Black Hole', a: { name: 'Sun', size: 1.39e9, color: '#fbbf24' }, b: { name: 'TON 618 (BH)', size: 3.9e14, color: '#a855f7' } }
+                    { name: 'Human vs Earth', a: { name: 'Human', size: 1.7, color: '#3b82f6' }, b: { name: 'Earth', size: 1.27e7, color: '#38bdf8' } }
                 ];
                 this.initDOM();
             }
@@ -688,7 +685,7 @@
             initDOM() {
                 this.container.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <h3 style="font-size: 0.8rem; color: var(--text-primary); font-weight: 600;">Cross-Scale Compare</h3>
+                        <h3 style="font-size: 0.8rem; color: var(--text-primary); font-weight: 600;">Planetary Scale Compare</h3>
                         <button id="exit-compare-btn" style="padding: 2px 6px; font-size: 0.65rem;">Log Scale</button>
                     </div>
                     <div id="compare-list" style="display: flex; flex-direction: column; gap: 4px;"></div>
